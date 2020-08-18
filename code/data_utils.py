@@ -553,32 +553,37 @@ class LR_Dataset(data.Dataset):
         self.base_dir = os.path.join('data', 'complete_data', config['data_name'])
         
         if config['data_name'] in ['gossipcop', 'politifact']:
-            self.node2id_file = os.path.join('data', 'complete_data', config['data_name'], 'node2id_lr_30_30_{}.json'.format(config['data_name']))
-            self.doc_embeds_file_gnn = os.path.join(self.base_dir, 'cached_embeds', 'doc_embeds_graph_lr_30_{}_{}_{}.pt'.format(split, seed, config['model_name']))
-            self.doc_embeds_file_text = os.path.join(self.base_dir, 'cached_embeds', 'doc_embeds_roberta_21_{}.pt'.format(split))
+            self.node2id_file = os.path.join('data', 'complete_data', config['data_name'], 'node2id_lr_30_30.json')
+            self.doc_embeds_file_gnn = os.path.join(self.base_dir, 'cached_embeds', 'doc_embeds_graph_lr_30_30_{}_{}_{}.pt'.format(split, seed, config['model_name']))
+            self.doc_embeds_file_text = os.path.join(self.base_dir, 'cached_embeds', 'doc_embeds_roberta_lr_{}.pt'.format(split))
+            # self.doc_embeds_file_text = os.path.join(self.base_dir, 'cached_embeds', 'doc_embeds_gloveavg_lr_{}.pt'.format(split))
+            self.split_docs_file = os.path.join('data', 'complete_data', config['data_name'], 'doc_splits_lr.json')
+            self._split_docs = json.load(open(self.split_docs_file, 'r'))['{}_docs'.format(split)]
+            
         elif config['data_name'] in ['HealthRelease', 'HealthStory']:
-            self.node2id_file = os.path.join('data', 'complete_data', config['data_name'], 'node2id_lr.json')
-            self.doc_embeds_file_gnn = os.path.join(self.base_dir, 'cached_embeds', 'doc_embeds_graph_lr_{}_{}_{}.pt'.format(split, seed, config['model_name']))
-            self.doc_embeds_file_text = os.path.join(self.base_dir, 'cached_embeds', 'doc_embeds_roberta_21_{}.pt'.format(split))
-            # self.doc_embeds_file_text = os.path.join(self.base_dir, 'cached_embeds', 'doc_embeds_roberta_{}_{}.pt'.format(seed, split))
+            self.node2id_file = os.path.join('data', 'complete_data', config['data_name'], 'node2id_lr_top10.json')
+            self.doc_embeds_file_gnn = os.path.join(self.base_dir, 'cached_embeds', 'doc_embeds_graph_top10_lr_test_21_hgt.pt')
+            # self.doc_embeds_file_gnn = os.path.join(self.base_dir, 'cached_embeds', 'doc_embeds_graph_top10_lr_{}_{}_{}.pt'.format(split, seed, config['model_name']))
+            # self.doc_embeds_file_text = os.path.join(self.base_dir, 'cached_embeds', 'doc_embeds_roberta_21_{}.pt'.format(split))
+            self.doc_embeds_file_text = os.path.join(self.base_dir, 'cached_embeds', 'doc_embeds_roberta_{}_{}.pt'.format(seed, split))
+            doc2labels_file = os.path.join('FakeHealth', 'doc2labels_{}.json'.format(config['data_name']))
+            doc2labels = json.load(open(doc2labels_file, 'r'))
+            self.split_docs_file = os.path.join('FakeHealth', 'doc_splits_{}.json'.format(config['data_name']))
+            self._split_docs = json.load(open(self.split_docs_file, 'r'))['{}_docs'.format(split)]
             
         self.test2id_file = os.path.join(self.base_dir, 'doc2id_encoder.json')
+        # self.test2id_file = os.path.join(self.base_dir, 'doc2id_encoder_gloveavg.json')
+        self.user_type_file = os.path.join(self.base_dir, 'user_types.json')
         
         if config['data_name'] in ['gossipcop', 'politifact']:
             self.split_docs_labels_file = os.path.join(self.base_dir, 'cached_embeds', 'docs_labels_lr_30_30_{}.json'.format(split))
         else:
             self.split_docs_labels_file = os.path.join(self.base_dir, 'cached_embeds', 'docs_labels_lr_{}.json'.format(split))
             
-        if config['data_name'] in ['HealthRelease', 'HealthStory']:
-            doc2labels_file = os.path.join('FakeHealth', 'doc2labels_{}.json'.format(config['data_name']))
-            doc2labels = json.load(open(doc2labels_file, 'r'))
-        self.split_docs_file = os.path.join('FakeHealth', 'doc_splits_{}.json'.format(config['data_name']))
-        self._split_docs = json.load(open(self.split_docs_file, 'r'))['{}_docs'.format(split)]
         self.node2id = json.load(open(self.node2id_file, 'r'))
         self.test2id = json.load(open(self.test2id_file, 'r'))
         self._doc_embeds_gnn = torch.load(self.doc_embeds_file_gnn)
-        # print(self._doc_embeds_gnn.shape)
-        # sys.exit()
+        self.user_types = json.load(open(self.user_type_file, 'r'))
         self._doc_embeds_text = torch.load(self.doc_embeds_file_text, map_location=torch.device('cpu'))
         self.data_size = len(self._split_docs)
         self.mode = config['mode']
@@ -632,26 +637,29 @@ class LR_Dataset(data.Dataset):
       
         
 
-    def __getitem__(self, idx):        
+    def __getitem__(self, idx): 
+        
         # Taking just 1 document out of all the docs in the split based on the 'idx'
         if self.mode == 'gnn':
             doc = self._split_docs[idx]
             doc_embed = self._doc_embeds_gnn[self.node2id[str(doc)], :]
             label = self.labels[str(doc)]
-            return doc_embed, label
+            return doc_embed, label, doc
         elif self.mode == 'text':
             try:
                 doc = self._split_docs[idx]
+                # doc_txt = str(doc).split('gossipcop-')[-1]
+                # doc_embed = self._doc_embeds_text[self.test2id[str(doc_txt)], :]
                 doc_embed = self._doc_embeds_text[self.test2id[str(doc)], :]
-                # if torch.sum(doc_embed)==0:
-                #     print("Sum = 0")
                 label = self.labels[str(doc)]
             except:
                 return None
-            return doc_embed, label
+            return doc_embed, label, doc
         elif self.mode == 'gnn+text':
             try:
                 doc = self._split_docs[idx]
+                # doc_txt = str(doc).split('gossipcop-')[-1]
+                # doc_embed_text = self._doc_embeds_text[self.test2id[str(doc_txt)], :]
                 doc_embed_text = self._doc_embeds_text[self.test2id[str(doc)], :]
                 doc_embed_gnn = self._doc_embeds_gnn[self.node2id[str(doc)], :]
                 doc_embed = torch.cat((doc_embed_text.unsqueeze(1), doc_embed_gnn.unsqueeze(1)))
@@ -659,7 +667,7 @@ class LR_Dataset(data.Dataset):
             except:
                 return None
                 
-            return doc_embed.squeeze(1), label
+            return doc_embed.squeeze(1), label, doc
             
     
     def __len__(self):
