@@ -26,10 +26,9 @@ from torch.autograd import Variable
 import torch.nn as nn
 from statistics import stdev
 
-from data import *
-from model import *
-from transformer_model import *
-from utils import *
+from models.model import *
+from models.transformer_model import *
+from utils.utils import *
 
 device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
 

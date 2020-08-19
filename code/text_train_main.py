@@ -17,11 +17,10 @@ import torch.nn as nn
 import torch.nn.functional as F
 from sklearn.metrics import classification_report
 
-from data import *
-from model import Document_Classifier
-from transformer_model import *
-from utils import *
-from cache_text import *
+from models.model import Document_Classifier
+from models.transformer_model import *
+from utils.utils import *
+from caching_funcs.cache_text import *
 
 device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
 

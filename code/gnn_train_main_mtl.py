@@ -23,12 +23,11 @@ from torchtext import datasets
 import torch.nn as nn
 from sklearn.metrics import accuracy_score
 
-from data import *
-from gnn_model import Graph_Net, Graph_Net_MTL, Relational_GNN
-from transformer_model import *
-from utils import *
-from cache_gnn import *
-from gnn_explainer import GNNExplainer
+from models.gnn_model import Graph_Net, Graph_Net_MTL, Relational_GNN
+from models.transformer_model import *
+from utils.utils import *
+from caching_funcs.cache_gnn import *
+from utils.gnn_explainer import GNNExplainer
 
 device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')        
 
