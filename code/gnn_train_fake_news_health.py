@@ -178,119 +178,28 @@ if __name__ == '__main__':
     print("\n" + "x"*50)
     
     # # Prepare the tensorboard writer
-    # writer = SummaryWriter(config['vis_path'])
+    writer = SummaryWriter(config['vis_path'])
     
     # Prepare dataset and iterators for training
     fold =1
-    #config['loader'], config['vocab_size'], config['data'] = prepare_gnn_training(config, fold=fold)
-    #del config['loader']
-    #del config['vocab_size']
-    #del config['data']
+    # Seeds for reproduceable runs
+    torch.manual_seed(config['seed'])
+    torch.cuda.manual_seed(config['seed'])
+    np.random.seed(config['seed'])
+    random.seed(config['seed'])
+    torch.backends.cudnn.deterministic = True
+    torch.backends.cudnn.benchmark = False
     
-    # For FakeNews non-transfomer training - lr
-    #seeds = [21, 42]
-    #w_decay = [1e-3, 2e-3]
-    #dropouts = [0.1, 0.2, 0.3, 0.4]
-    #node_dropout = [0.1, 0.2, 0.3, 0.4]
-    #lrs = [5e-3, 1e-4, 5e-4]
-    #embed_dims = [128, 256, 512]
-    seeds = [3, 21, 42, 84, 168]
-    w_decay = [1e-3]
-    dropouts = [0.1]
-    node_dropout = [0.1]
-    lrs = [5e-3]
-    embed_dims = [256]
+    config['loader'], config['vocab_size'], config['data'] = prepare_gnn_training(config, fold=fold, verbose=False)
+    args.n_nodes, args.feat_dim = config['data'].x.shape
     
-    best_drop, best_node_drop, best_decay, best_lr = 0,0,0,0
-    best_f1= -100
-    results = {}   
     
-    for decay in w_decay:
-        results[decay] = {}
-        config['weight_decay'] = decay
-        for lr in lrs:
-            results[decay][lr] = {}
-            config['lr'] = lr
-            for hid_drop in dropouts:
-                results[decay][lr][hid_drop] = {}
-                config['dropout'] = hid_drop
-                args.dropout = hid_drop
-                for node_drop in node_dropout:
-                    results[decay][lr][hid_drop][node_drop] = {}
-                    config['node_drop'] = node_drop
-                    args.node_drop = node_drop
-                    for embed_dim in embed_dims:
-                        results[decay][lr][hid_drop][node_drop][embed_dim] = {}
-                        config['embed_dim'] = embed_dim
-                        args.dim = embed_dim
-                        avg_val_recall, avg_val_prec, avg_val_acc = 0,0,0
-                        avg_val_f1 = 0
-                        if hid_drop>0.2 and node_drop>0.2:
-                            print("\nSKIPPINGGGG:  decay = {}, lr = {}, dropout = {}, node_drop = {}, embed_dim = {}".format(decay, lr, hid_drop, node_drop, embed_dim))
-                            continue
-                        for seed in seeds:
-                            config['seed']= seed
-                            print("\n decay = {}, lr = {}, dropout = {}, node_drop = {}, seed = {}, embed_dim = {}".format(decay, lr, hid_drop, node_drop, seed, embed_dim))
-                            config['writer'] = SummaryWriter(config['vis_path'])
-                            
-                            # Seeds for reproduceable runs
-                            torch.manual_seed(config['seed'])
-                            torch.cuda.manual_seed(config['seed'])
-                            np.random.seed(config['seed'])
-                            random.seed(config['seed'])
-                            torch.backends.cudnn.deterministic = True
-                            torch.backends.cudnn.benchmark = False
-                            
-                            config['loader'], config['vocab_size'], config['data'] = prepare_gnn_training(config, fold=fold, verbose=False)
-                            args.n_nodes, args.feat_dim = config['data'].x.shape
-                            # sys.exit()
-                            
-                            graph_net = Graph_Net_Main(config, args)
-                            best_val_f1, best_val_acc, best_val_recall, best_val_precision = graph_net.train_main(cache=True)
-                            avg_val_f1 += best_val_f1
-                            avg_val_prec+= best_val_precision
-                            avg_val_recall+= best_val_recall
-                            avg_val_acc+= best_val_acc
-                            del config['loader']
-                            del config['vocab_size']
-                            del graph_net
-                            torch.cuda.empty_cache()
-                            gc.collect()
-                            
-        
-                            config['writer'].close()
-                        results[decay][lr][hid_drop][node_drop][embed_dim]['f1'] = avg_val_f1 /len(seeds)
-                        results[decay][lr][hid_drop][node_drop][embed_dim]['precision'] = avg_val_prec/len(seeds)
-                        results[decay][lr][hid_drop][node_drop][embed_dim]['recall'] = avg_val_recall/len(seeds)
-                        results[decay][lr][hid_drop][node_drop][embed_dim]['accuracy'] = avg_val_acc/len(seeds)
-                        
-                        if results[decay][lr][hid_drop][node_drop][embed_dim]['f1'] > best_f1:
-                            best_f1 = results[decay][lr][hid_drop][node_drop][embed_dim]['f1']
-                            best_drop = hid_drop
-                            best_node_drop = node_drop
-                            best_decay = decay
-                            best_lr = lr
-                            best_embed_dim = embed_dim
-                        print("\n\n", results)
-                        print("Best so far: \nbest_f1 = {},  best_drop = {},  best_node_drop = {},  best_lr = {},  best_embed_dim = {},  best_decay = {}".format(best_f1, best_drop, best_node_drop, best_lr, best_embed_dim, best_decay))
-                    
-    print("\n\nModel with best f1 score has the configuration:\n\n")
-    print("Weight_decay  =  ", best_decay)
-    print("LR  =  ", best_lr)
-    print("Dropout  =  ", best_drop)
-    print("Node Dropout  =  ", best_node_drop)
-    print("Embedding dim = ", best_embed_dim)
-    print("\n\n..... with the scores:\n")
-    print("Accuracy = ", results[best_decay][best_lr][best_drop][best_node_drop][best_embed_dim]['accuracy'])
-    print("F1 = ", results[best_decay][best_lr][best_drop][best_node_drop][best_embed_dim]['f1'])
-    print("Precision = ", results[best_decay][best_lr][best_drop][best_node_drop][best_embed_dim]['precision'])
-    print("Recall = ", results[best_decay][best_lr][best_drop][best_node_drop][best_embed_dim]['recall'])
      
     
-    # try:
-    #     graph_net = Graph_Net_Main(config)
-    #     graph_net.train_main()
-    # except KeyboardInterrupt:
-    #     print("Keyboard interrupt by user detected...\nClosing the tensorboard writer!")
-    #     print("Best val f1 = ", graph_net.best_val_f1)
-    #     writer.close()
+    try:
+        graph_net = Graph_Net_Main(config)
+        graph_net.train_main()
+    except KeyboardInterrupt:
+        print("Keyboard interrupt by user detected...\nClosing the tensorboard writer!")
+        print("Best val f1 = ", graph_net.best_val_f1)
+        writer.close()
