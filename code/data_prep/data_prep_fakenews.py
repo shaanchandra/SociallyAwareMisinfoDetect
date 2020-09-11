@@ -23,7 +23,7 @@ def create_base_directory():
             src_path = os.path.join('../new/FakeNewsNet/code/fakenewsnet_dataset', data)
             src_path = os.path.join(src_path, label)
             
-            dest_path = os.path.join('./base_data', data)
+            dest_path = os.path.join('base_data', data)
             dest_path = os.path.join(dest_path, label)
         
             

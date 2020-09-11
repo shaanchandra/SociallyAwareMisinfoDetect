@@ -18,7 +18,8 @@ class GCN_PreProcess():
     def __init__(self, config, gossipcop=False, politifact=False):
         self.config = config
         self.data_dir = config['data_dir']
-        self.comp_dir = os.path.join(os.getcwd(), '..', 'data', 'complete_data')
+        self.comp_dir = os.path.join('..', 'data', 'complete_data')
+        # self.comp_dir = os.path.join('../data', 'complete_data')
         self.datasets = []
         
         if politifact:
@@ -113,7 +114,7 @@ class GCN_PreProcess():
 
             docsplits_file = os.path.join(self.data_dir, dataset, 'doc_splits.json') 
             
-            docsplits = json.load(open(docsplits_file+'.json', 'r'))
+            docsplits = json.load(open(docsplits_file, 'r'))
             train_docs = docsplits['train_docs']
             test_docs = docsplits['test_docs']
             val_docs = docsplits['val_docs']
@@ -157,7 +158,7 @@ class GCN_PreProcess():
             
             print("\nCreating doc2id and user2id dicts....\n")
             usersplits_file = os.path.join(self.data_dir, 'complete_data', dataset, 'user_splits_lr.json')
-            docsplits_file = os.path.join(self.data_dir, dataset, 'doc_splits.json') 
+            docsplits_file = os.path.join(self.comp_dir, dataset, 'doc_splits.json') 
             
             user_splits = json.load(open(usersplits_file, 'r'))
             doc_splits = json.load(open(docsplits_file, 'r'))
@@ -166,10 +167,17 @@ class GCN_PreProcess():
             val_users = user_splits['val_users']
             test_users = user_splits['test_users']
             
+            all_users = list(set(train_users + val_users + test_users))                
+
+            print('\nTrain users = ', len(train_users))
+            print("Test users = ", len(test_users))
+            print("Val users = ", len(val_users))
+            print("All users = ", len(all_users))
+            
             train_docs = doc_splits['train_docs']
             val_docs = doc_splits['val_docs']
             test_docs = doc_splits['test_docs']
-            restricted_users = json.load(open(os.path.join(self.comp_dir, dataset, 'restricted_users_30.json'), 'r'))
+            restricted_users = json.load(open(os.path.join(self.comp_dir, dataset, 'restricted_users_gossipcop_5.json'), 'r'))
             done_users = json.load(open(os.path.join(self.comp_dir, dataset, 'done_users_30.json'), 'r'))
             
             
@@ -188,7 +196,7 @@ class GCN_PreProcess():
             print("Val docs = ", len(val_docs))
             print("doc2id_train = ", len(doc2id_train))
             print("Node_type = ", len(node_type))
-            doc2id_file = os.path.join(self.comp_dir, dataset, 'doc2id_lr_train_30_30.json') 
+            doc2id_file = os.path.join(self.comp_dir, dataset, 'doc2id_lr_train_30_5.json') 
             print("Saving doc2id dict in :", doc2id_file)
             with open(doc2id_file, 'w+') as j:
                 json.dump(doc2id_train, j)
@@ -222,7 +230,7 @@ class GCN_PreProcess():
             for count, user in enumerate(all_users):
                 user2id_train[str(user)] = count + len(doc2id_train)
                 node_type.append(2)
-            user2id_train_file = os.path.join(self.comp_dir, dataset, 'user2id_lr_train_30_30.json') 
+            user2id_train_file = os.path.join(self.comp_dir, dataset, 'user2id_lr_train_30_5.json') 
             print("user2_id = ", len(user2id_train))
             print("Saving user2id_train in : ", user2id_train_file)
             with open(user2id_train_file, 'w+') as j:
@@ -233,12 +241,12 @@ class GCN_PreProcess():
             node2id.update(user2id_train)
             print("node2id size = ", len(node2id))
             print("Node_type = ", len(node_type))
-            node2id_file = os.path.join(self.comp_dir, dataset, 'node2id_lr_train_30_30.json')
+            node2id_file = os.path.join(self.comp_dir, dataset, 'node2id_lr_train_30_5.json')
             print("Saving node2id_lr_train in : ", node2id_file)
             with open(node2id_file, 'w+') as json_file:
                 json.dump(node2id, json_file)
                 
-            node_type_file = os.path.join(self.comp_dir, dataset, 'node_type_lr_train_30_30.npy')
+            node_type_file = os.path.join(self.comp_dir, dataset, 'node_type_lr_train_30_5.npy')
             node_type = np.array(node_type)
             print(node_type.shape)
             print("Saving node_type in :", node_type_file)
@@ -250,13 +258,13 @@ class GCN_PreProcess():
                 doc2id_train[str(doc)] = test_count + len(user2id_train) + orig_doc2id_len
             print("Test docs = ", len(test_docs))
             print("doc2id_train = ", len(doc2id_train))
-            with open(os.path.join(self.comp_dir, dataset, 'doc2id_lr_train_30_30.json'), 'w+') as j:
+            with open(os.path.join(self.comp_dir, dataset, 'doc2id_lr_train_30_5.json'), 'w+') as j:
                 json.dump(doc2id_train, j)
             
             node2id = doc2id_train.copy()
             node2id.update(user2id_train)
             print("node2id size = ", len(node2id))
-            node2id_file = os.path.join(self.comp_dir, dataset, 'node2id_lr_30_30.json') 
+            node2id_file = os.path.join(self.comp_dir, dataset, 'node2id_lr_30_5.json') 
             print("Saving node2id_lr in : ", node2id_file)
             with open(node2id_file, 'w+') as json_file:
                 json.dump(node2id, json_file)
@@ -270,7 +278,7 @@ class GCN_PreProcess():
     def create_filtered_follower_following(self):
         
         for dataset in self.datasets: 
-            with open(os.path.join(self.comp_dir, dataset, 'user2id_lr_train_30_30.json'),'r') as j:
+            with open(os.path.join(self.comp_dir, dataset, 'user2id_lr_train_30_5.json'),'r') as j:
                all_users = json.load(j)
             
             done_users = json.load(open(os.path.join(self.comp_dir, dataset, 'done_users_30.json'), 'r'))['done_users']
@@ -323,9 +331,9 @@ class GCN_PreProcess():
         for dataset in self.datasets:
             print("\n\n" + "-"*100 + "\n \t\t\tAnalyzing  {} dataset for adj_matrix\n".format(dataset) + '-'*100)
             
-            user2id = json.load(open(os.path.join(self.comp_dir, dataset, 'user2id_lr_train_30_30.json'),'r'))
-            doc2id = json.load(open(os.path.join(self.comp_dir, dataset, 'doc2id_lr_train_30_30.json'),'r'))
-            doc_splits_file = os.path.join(self.data_dir, dataset, 'doc_splits.json')
+            user2id = json.load(open(os.path.join(self.comp_dir, dataset, 'user2id_lr_train_30_5.json'),'r'))
+            doc2id = json.load(open(os.path.join(self.comp_dir, dataset, 'doc2id_lr_train_30_5.json'),'r'))
+            doc_splits_file = os.path.join(self.comp_dir, dataset, 'doc_splits.json')
             doc_splits = json.load(open(doc_splits_file, 'r'))
             test_docs = doc_splits['test_docs']
             
@@ -416,13 +424,13 @@ class GCN_PreProcess():
             print("Non-zero entries edge_type = ", edge_type.getnnz())
             # print("Total Non-zero entries = ", len(np.nonzero(adj_matrix)[0]))
             
-            filename = os.path.join(self.comp_dir, dataset, 'adj_matrix_lr_train_30_30.npz')
+            filename = os.path.join(self.comp_dir, dataset, 'adj_matrix_lr_train_30_5.npz')
             # filename = self.data_dir+ '/complete_data' + '/adj_matrix_{}.npy'.format(dataset)
             print("\nMatrix construction done! Saving in  {}".format(filename))
             save_npz(filename, adj_matrix.tocsr())
             # np.save(filename, adj_matrix)
             
-            filename = os.path.join(self.comp_dir, dataset, 'edge_type_lr_train_30_30.npz')
+            filename = os.path.join(self.comp_dir, dataset, 'edge_type_lr_train_30_5.npz')
             print("\nedge_type construction done! Saving in  {}".format(filename))
             save_npz(filename, edge_type.tocsr())
             
@@ -437,7 +445,7 @@ class GCN_PreProcess():
             edge_index = np.vstack((np.array(rows), np.array(cols)))
             print("Edge index shape = ", edge_index.shape)
             
-            edge_matrix_file = os.path.join(self.comp_dir, dataset, 'adj_matrix_lr_train_30_30_edge.npy')
+            edge_matrix_file = os.path.join(self.comp_dir, dataset, 'adj_matrix_lr_train_30_5_edge.npy')
             print("saving edge_list format in :  ", edge_matrix_file)
             np.save(edge_matrix_file, edge_index, allow_pickle=True)
             
@@ -445,7 +453,7 @@ class GCN_PreProcess():
             edge_index = edge_index.toarray()
             edge_index = edge_index.squeeze(0)
             print("edge_type shape = ", edge_index.shape)
-            edge_matrix_file = os.path.join(self.comp_dir, 'edge_type_lr_train_30_30_edge.npy')
+            edge_matrix_file = os.path.join(self.comp_dir, dataset, 'edge_type_lr_train_30_5_edge.npy')
             print("saving edge_type edge list format in :  ", edge_matrix_file)
             np.save(edge_matrix_file, edge_index, allow_pickle=True)
         
@@ -462,62 +470,63 @@ class GCN_PreProcess():
         for dataset in self.datasets:
             print("\n\n" + "-"*100 + "\n \t\tAnalyzing  {} dataset  for feature_matrix\n".format(dataset) + '-'*100)
             
-            doc2id_file = os.path.join(self.comp_dir, dataset, 'doc2id_lr_train_30_30.json')
-            doc_splits_file = os.path.join(self.data_dir, dataset, 'doc_splits.json')
+            doc2id_file = os.path.join(self.comp_dir, dataset, 'doc2id_lr_train_30_5.json')
+            doc_splits_file = os.path.join(self.comp_dir, dataset, 'doc_splits.json')
             user_splits_file = os.path.join(self.data_dir, 'complete_data', dataset, 'user_splits_lr.json')
-            user2id_file = os.path.join(self.comp_dir, dataset, 'user2id_lr_train_30_30.json')            
+            user2id_file = os.path.join(self.comp_dir, dataset, 'user2id_lr_train_30_5.json')            
             
             user_splits = json.load(open(user_splits_file, 'r'))                
             train_users = user_splits['train_users']
             val_users = user_splits['val_users']
             test_users = user_splits['test_users']
             
-            doc2id = json.load(open(doc2id_file+'.json', 'r'))
-            doc_splits = json.load(open(doc_splits_file+'.json', 'r'))
+            doc2id = json.load(open(doc2id_file, 'r'))
+            doc_splits = json.load(open(doc_splits_file, 'r'))
             train_docs= doc_splits['train_docs']
             val_docs = doc_splits['val_docs']
             test_docs = doc_splits['test_docs']
             
-            user2id = json.load(open(user2id_file+'.json', 'r'))  
+            user2id = json.load(open(user2id_file, 'r'))  
             N = len(train_docs) + len(val_docs) + len(user2id)
             
             vocab = {}
             vocab_size=0
             start = time.time()
-            print("\nBuilding vocabulary...")               
-            for label in labels:
-                src_doc_dir = os.path.join(self.data_dir, 'base_data', dataset, label)
-                for root, dirs, files in os.walk(src_doc_dir):
-                    for file in files:
-                        doc = file.split('.')[0]
-                        if str(doc) in train_docs and str(doc) in doc2id:
-                            src_file_path = os.path.join(root, file)
-                            with open(src_file_path, 'r') as f:
-                                file_content = json.load(f)
-                                text = file_content['text'].lower()[:500]
-                                text = re.sub(r'#[\w-]+', 'hashtag', text)
-                                text = re.sub(r'https?://\S+', 'url', text)
-                                # text = re.sub(r"[^A-Za-z(),!?\'`]", " ", text)
-                                text = nltk.word_tokenize(text)
-                                for token in text:
-                                    if token not in vocab.keys():
-                                        vocab[token] = vocab_size
-                                        vocab_size+=1
-                
-    
-                hrs, mins, secs = self.calc_elapsed_time(start, time.time())
-                print("Done. Took {}hrs and {}mins and {}secs\n".format(hrs, mins, secs))
-                print("Size of vocab =  ", vocab_size)
-                vocab_file = os.path.join(self.comp_dir, dataset,'vocab_lr_30_30.json')
-                print("Saving vocab for  {}  at:  {}".format(dataset, vocab_file))
-                with open(vocab_file, 'w+') as v:
-                    json.dump(vocab, v)
+            vocab_file = os.path.join(self.comp_dir, dataset,'vocab_lr_30_5.json')
+            if not os.path.isfile(vocab_file):
+                print("\nBuilding vocabulary...")               
+                for label in labels:
+                    src_doc_dir = os.path.join(self.data_dir, 'base_data', dataset, label)
+                    for root, dirs, files in os.walk(src_doc_dir):
+                        for file in files:
+                            doc = file.split('.')[0]
+                            if str(doc) in train_docs and str(doc) in doc2id:
+                                src_file_path = os.path.join(root, file)
+                                with open(src_file_path, 'r') as f:
+                                    file_content = json.load(f)
+                                    text = file_content['text'].lower()[:500]
+                                    text = re.sub(r'#[\w-]+', 'hashtag', text)
+                                    text = re.sub(r'https?://\S+', 'url', text)
+                                    # text = re.sub(r"[^A-Za-z(),!?\'`]", " ", text)
+                                    text = nltk.word_tokenize(text)
+                                    for token in text:
+                                        if token not in vocab.keys():
+                                            vocab[token] = vocab_size
+                                            vocab_size+=1
+                    
+        
+                    hrs, mins, secs = self.calc_elapsed_time(start, time.time())
+                    print("Done. Took {}hrs and {}mins and {}secs\n".format(hrs, mins, secs))
+                    print("Size of vocab =  ", vocab_size)
+                    print("Saving vocab for  {}  at:  {}".format(dataset, vocab_file))
+                    with open(vocab_file, 'w+') as v:
+                        json.dump(vocab, v)
                 
             
             else:
                 print("\nReading vocabulary...")
-                vocab_file = os.path.join(self.comp_dir, dataset, 'vocab_lr_30_30.json')
-                vocab = json.load(open(vocab_file+'.json', 'r'))
+                vocab_file = os.path.join(self.comp_dir, dataset, 'vocab_lr_30_5.json')
+                vocab = json.load(open(vocab_file, 'r'))
                 vocab_size = len(vocab)
             
             
@@ -630,7 +639,7 @@ class GCN_PreProcess():
             idx = np.where(sum_1==0)
             print(len(idx[0]))
             
-            filename = os.path.join(self.comp_dir, dataset, 'feat_matrix_lr_train_30_30.npz')
+            filename = os.path.join(self.comp_dir, dataset, 'feat_matrix_lr_train_30_5.npz')
             print("Matrix construction done! Saving in :   {}".format(filename))
             save_npz(filename, feat_matrix.tocsr())
             
@@ -646,16 +655,16 @@ class GCN_PreProcess():
             print("\n\n" + "-"*100 + "\n \t\t   Analyzing  {} dataset  for Creating Labels\n".format(dataset) + '-'*100)
             
             
-            doc2id_file = os.path.join(self.comp_dir, dataset, 'doc2id_lr_train_30_30.json')
-            adj_matrix_file = os.path.join(self.comp_dir, dataset, 'adj_matrix_lr_train_30_30.npz')
+            doc2id_file = os.path.join(self.comp_dir, dataset, 'doc2id_lr_train_30_5.json')
+            adj_matrix_file = os.path.join(self.comp_dir, dataset, 'adj_matrix_lr_train_30_5.npz')
             
             doc2id = json.load(open(doc2id_file, 'r')) 
             adj_matrix = load_npz(adj_matrix_file)
             N,_ = adj_matrix.shape
             del adj_matrix
             
-            doc_splits_file = os.path.join(self.data_dir, dataset, 'doc_splits.json') 
-            doc_splits = json.load(open(doc_splits_file+'.json', 'r'))
+            doc_splits_file = os.path.join(self.comp_dir, dataset, 'doc_splits.json') 
+            doc_splits = json.load(open(doc_splits_file, 'r'))
             train_docs= doc_splits['train_docs']
             val_docs = doc_splits['val_docs']
             
@@ -678,7 +687,7 @@ class GCN_PreProcess():
             # print(len(doc2id.keys()) - len(doc_splits['test_docs']))
             assert len(doc2labels.keys()) == len(doc2id.keys()) - len(doc_splits['test_docs'])
             print("Len of doc2labels  = {}\n".format(len(doc2labels)))
-            labels_dict_file = os.path.join(self.comp_dir, dataset, 'doc2labels_lr_train_30_30.json')
+            labels_dict_file = os.path.join(self.comp_dir, dataset, 'doc2labels_lr_train_30_5.json')
             print("Saving labels_dict for  {} at:  {}".format(dataset, labels_dict_file))
             with open(labels_dict_file, 'w+') as v:
                 json.dump(doc2labels, v)
@@ -693,7 +702,7 @@ class GCN_PreProcess():
             # print(sum(labels_list[2402:]))
             # print(sum(labels_list[:2402]))
             
-            filename = os.path.join(self.comp_dir, dataset, 'labels_list_lr_train_30_30.json')
+            filename = os.path.join(self.comp_dir, dataset, 'labels_list_lr_train_30_5.json')
             temp_dict = {}
             temp_dict['labels_list'] = list(labels_list)
             print("Labels list construction done! Saving in :   {}".format(filename))
@@ -703,7 +712,7 @@ class GCN_PreProcess():
             
             # Create the all_labels file
             all_labels = np.zeros(N)
-            all_labels_data_file = os.path.join(self.comp_dir, dataset, 'all_labels_lr_train_30_30.json')
+            all_labels_data_file = os.path.join(self.comp_dir, dataset, 'all_labels_lr_train_30_5.json')
             for doc in doc2labels.keys():
                 all_labels[doc2id[str(doc)]] = doc2labels[str(doc)]
             
@@ -723,9 +732,9 @@ class GCN_PreProcess():
         for dataset in self.datasets:
             print("\n\n" + "-"*100 + "\n \t\t   Creating split masks for {}\n".format(dataset) + '-'*100)
             
-            doc2id_train_file = os.path.join(self.comp_dir, dataset, 'doc2id_lr_train_30_30.json')
-            doc_splits_file = os.path.join(self.data_dir, dataset, 'doc_splits.json')
-            train_adj_matrix_file = os.path.join(self.comp_dir, dataset, 'adj_matrix_lr_train_30_30.npz')
+            doc2id_train_file = os.path.join(self.comp_dir, dataset, 'doc2id_lr_train_30_5.json')
+            doc_splits_file = os.path.join(self.comp_dir, dataset, 'doc_splits.json')
+            train_adj_matrix_file = os.path.join(self.comp_dir, dataset, 'adj_matrix_lr_train_30_5.npz')
             
             doc2id = json.load(open(doc2id_train_file, 'r'))
             doc_splits = json.load(open(doc_splits_file, 'r'))
@@ -760,7 +769,7 @@ class GCN_PreProcess():
             temp_dict['train_mask'] = list(train_mask)
             temp_dict['val_mask'] = list(val_mask)
             temp_dict['repr_mask'] = list(representation_mask)
-            split_mask_file = os.path.join(self.comp_dir, dataset, 'split_mask_lr_30_30.json')
+            split_mask_file = os.path.join(self.comp_dir, dataset, 'split_mask_lr_30_5.json')
             print("Writing split mask file in : ", split_mask_file)
             with open(split_mask_file, 'w+') as j:
                 json.dump(temp_dict, j)               
@@ -801,13 +810,13 @@ if __name__== '__main__':
                           help='Aggregate only user ids from different folders of tweets/retweets to a single place')
     parser.add_argument('--create_dicts', type = bool, default = False,
                           help='Create doc2id and node2id dictionaries')
-    parser.add_argument('--create_adj_matrix', type = bool, default = False,
+    parser.add_argument('--create_adj_matrix', type = bool, default = True,
                           help='To create adjacency matrix for a given dataset')
     parser.add_argument('--create_feat_matrix', type = bool, default = False,
                           help='To create feature matrix for a given dataset')
-    parser.add_argument('--create_labels', type = bool, default = True,
+    parser.add_argument('--create_labels', type = bool, default = False,
                           help='To create labels for all the nodes')
-    parser.add_argument('--create_split_masks', type = bool, default = True,
+    parser.add_argument('--create_split_masks', type = bool, default = False,
                           help='To create node masks for data splits')
     
     

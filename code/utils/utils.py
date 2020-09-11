@@ -215,29 +215,49 @@ def prepare_gnn_training(config, fold=None, verbose=True):
             print("\n\n==>> Loading feature matrix and adj matrix....") 
             
         if config['data_name'] in ['gossipcop', 'politifact']:
-            x_file = os.path.join(config['data_path'], config['data_name'], 'feat_matrix_lr_train_30_10.npz')
-            y_file = os.path.join(config['data_path'], config['data_name'], 'all_labels_lr_train_30_10.json')
-            edge_index_file = os.path.join(config['data_path'], config['data_name'], 'adj_matrix_lr_train_30_10_edge.npy')
-            node2id_file = os.path.join(config['data_path'], config['data_name'], 'node2id_lr_train_30_10.json')
-            node_type_file = os.path.join(config['data_path'], config['data_name'], 'node_type_lr_train_30_10.npy')
+            x_file = os.path.join(config['data_path'], config['data_name'], 'feat_matrix_lr_train_30_5.npz'.format(config['data_name']))
+            y_file = os.path.join(config['data_path'], config['data_name'], 'all_labels_lr_train_30_5.json'.format(config['data_name']))
+            # adj_name = 'adj_matrix_lr_train_30_5_edge.npy'.format(config['data_name']) if config['model_name'] != 'HGCN' else 'adj_matrix_lr_train_30_5.npz'.format(config['data_name'])
+            adj_name = 'adj_matrix_lr_train_30_5_edge.npy'.format(config['data_name'])
+            edge_index_file = os.path.join(config['data_path'], config['data_name'], adj_name)
+            node2id_file = os.path.join(config['data_path'], config['data_name'], 'node2id_lr_train_30_5.json'.format(config['data_name']))
+            node_type_file = os.path.join(config['data_path'], config['data_name'], 'node_type_lr_train_30_5.npy'.format(config['data_name']))
             if config['model_name'] in ['rgcn', 'rgat', 'rsage']:
-                edge_type_file = os.path.join(config['data_path'], config['data_name'], 'edge_type_lr_train_30_10_edge.npy')
+                edge_type_file = os.path.join(config['data_path'], config['data_name'], 'edge_type_lr_train_30_5_edge.npy'.format(config['data_name']))
         else:
             x_file = os.path.join(config['data_path'], config['data_name'], 'feat_matrix_lr_top10_train.npz')
             y_file = os.path.join(config['data_path'], config['data_name'], 'all_labels_lr_top10_train.json')
-            edge_index_file = os.path.join(config['data_path'], config['data_name'], 'adj_matrix_lr_top10_train_edge.npy')
+            # adj_name = 'adj_matrix_lr_top10_train_edge.npy' if config['model_name'] != 'HGCN' else 'adj_matrix_lr_top10_train.npz'
+            adj_name = 'adj_matrix_lr_top10_train_edge.npy'
+            edge_index_file = os.path.join(config['data_path'], config['data_name'], adj_name)
             node2id_file = os.path.join(config['data_path'], config['data_name'], 'node2id_lr_top10_train.json')
             node_type_file = os.path.join(config['data_path'], config['data_name'], 'node_type_lr_top10_train.npy')
             if config['model_name'] in ['rgcn', 'rgat', 'rsage']:
                 edge_type_file = os.path.join(config['data_path'], config['data_name'], 'edge_type_lr_top10_edge.npy')
         
+        
+        # if config['model_name'] != 'HGCN':
+        #     edge_index_data = np.load(edge_index_file)
+        #     edge_index_data = torch.from_numpy(edge_index_data).long()
+            
+        # elif config['model_name'] == 'HGCN':
+        #     edge_index_data = load_npz(edge_index_file)
+            
+        #     # edge_index_data = torch.from_numpy(edge_index_data.toarray())
+            
+        #     edge_index_data = edge_index_data.tocoo()
+        #     indices = torch.from_numpy(np.vstack((edge_index_data.row, edge_index_data.col)).astype(np.int64))
+        #     values = torch.Tensor(edge_index_data.data)
+        #     shape = torch.Size(edge_index_data.shape)
+        #     edge_index_data = torch.sparse.FloatTensor(indices, values, shape)
+        
+        edge_index_data = np.load(edge_index_file)
+        edge_index_data = torch.from_numpy(edge_index_data).long()
+        
         x_data = load_npz(x_file)
-
         x_data = torch.from_numpy(x_data.toarray())
         y_data = json.load(open(y_file, 'r'))
         y_data = torch.LongTensor(y_data['all_labels'])
-        edge_index_data = np.load(edge_index_file)
-        edge_index_data = torch.from_numpy(edge_index_data).long()
         node2id = json.load(open(node2id_file, 'r'))
         # node_type = np.load(node_type_file)
         # node_type = torch.from_numpy(node_type).float()
@@ -248,8 +268,9 @@ def prepare_gnn_training(config, fold=None, verbose=True):
             edge_type_data = None
         
         num_nodes, vocab_size = x_data.shape
-        isolated_nodes = contains_isolated_nodes(edge_index= edge_index_data)
-        self_loops = contains_self_loops(edge_index= edge_index_data)
+        if config['model_name'] != 'HGCN':
+            isolated_nodes = contains_isolated_nodes(edge_index= edge_index_data)
+            self_loops = contains_self_loops(edge_index= edge_index_data)
         
         if verbose:
             print("\n\n==>> Clustering the graph and preparing dataloader....")
@@ -258,12 +279,12 @@ def prepare_gnn_training(config, fold=None, verbose=True):
         new_num_nodes, _ = data.x.shape
 
         
-        split_mask_file = os.path.join(config['data_path'], config['data_name'], 'split_mask_lr_30_10.json') if config['data_name'] in ['gossipcop', 'politifact'] else \
+        split_mask_file = os.path.join(config['data_path'], config['data_name'], 'split_mask_lr_30_5.json') if config['data_name'] in ['gossipcop', 'politifact'] else \
             os.path.join(config['data_path'], config['data_name'], 'split_mask_top10.json')
         split_masks = json.load(open(split_mask_file, 'r'))
         data.train_mask = torch.FloatTensor(split_masks['train_mask'])
         data.val_mask = torch.FloatTensor(split_masks['val_mask'])
-        data.representation_mask = torch.FloatTensor(split_masks['repr_mask']) 
+        # data.representation_mask = torch.FloatTensor(split_masks['repr_mask']) 
         data.node2id = torch.tensor(list(node2id.values()))
         # data.node_type = node_type
             
@@ -284,8 +305,9 @@ def prepare_gnn_training(config, fold=None, verbose=True):
     
     if verbose:
         print("\n\n" + "-"*50 + "\nDATA STATISTICS:\n" + "-"*50)
-        print("Contains isolated nodes = ", isolated_nodes)
-        print("Contains self loops = ", self_loops)
+        if config['model_name'] != 'HGCN':
+            print("Contains isolated nodes = ", isolated_nodes)
+            print("Contains self loops = ", self_loops)
         print("Vocabulary size = ", vocab_size)
         print('No. of nodes in graph = ', num_nodes)
         print('No. of nodes after removing isolated nodes = ', new_num_nodes)

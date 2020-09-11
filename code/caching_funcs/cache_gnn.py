@@ -1,16 +1,15 @@
 import torch
 import torch.nn.functional as F
 import argparse, time, datetime, shutil
-import sys, os, glob, json
+import sys, os, glob, json, random
+import numpy as np
 import warnings
 warnings.filterwarnings("ignore")
 
 import nltk
 nltk.download('punkt')
 sys.path.append("..")
-
-from models.gnn_model import Graph_Net, Relational_GNN
-from models.transformer_model import *
+from torch_geometric.utils import to_dense_adj
 # from utils.utils import *
 
 device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')   
@@ -22,8 +21,8 @@ class Cache_GNN_Embeds():
         self.config = config
         self.model = model
         self.model_file = config['model_file']
-        self.comp_dir = os.path.join(os.getcwd(), '..', 'data', 'complete_data', config['data_name'])
-        self.data_dir = os.path.join(os.getcwd(), '..', 'FakeHealth')
+        self.comp_dir = os.path.join('data', 'complete_data', config['data_name'])
+        self.data_dir = os.path.join('FakeHealth')
 
         
         if config['data_name'] == 'pheme':
@@ -66,6 +65,9 @@ class Cache_GNN_Embeds():
             if self.config['full_graph']:
                 if self.config['model_name'] in ['rgcn', 'rgat', 'rsage']:
                     _, _, node_embeds = self.model(self.config['data'].x.to(device), self.config['data'].edge_index.to(device), self.config['data'].edge_attr.to(device))
+                elif self.config['model_name'] == 'HGCN':
+                    preds = self.model.encode(self.config['data'].x.to(device), self.config['data'].edge_index.to(device))
+                    _, node_embeds = self.model.decode(preds.to(device), self.config['data'].edge_index.to(device))
                 else:
                     _, _, node_embeds = self.model(self.config['data'].x.to(device), self.config['data'].edge_index.to(device))
                 for idx, ids in enumerate(node2id.values()):
@@ -76,6 +78,11 @@ class Cache_GNN_Embeds():
                 for iters, batch_data in enumerate(self.config['loader']): 
                     if self.config['model_name'] in ['rgcn', 'rgat', 'rsage']:
                         _, _, node_embeds = self.model(batch_data.x.to(device), batch_data.edge_index.to(device), batch_data.edge_attr.to(device))
+                    elif self.config['model_name'] == 'HGCN':
+                        batch_data.edge_index = to_dense_adj(batch_data.edge_index).squeeze(0)
+                        preds = self.model.encode(batch_data.x.to(device), batch_data.edge_index.to(device))
+                        _, node_embeds = self.model.decode(preds.to(device), batch_data.edge_index.to(device))
+                        
                     else:
                         _, _, node_embeds = self.model(batch_data.x.to(device), batch_data.edge_index.to(device))
                     for idx, ids in enumerate(batch_data.node2id):
@@ -122,9 +129,9 @@ class Cache_GNN_Embeds():
                     c+=1
             print("Zero entries = ", c)
 
-            user_embed_file = os.path.join(base_dir, 'fold_{}'.format(self.config['fold']), 'doc_embeds_graph_lr_just_{}_{}_{}.pt'.format(split, self.config['seed'], self.config['model_name']))
-            print("\nSaving doc embeddings in : ", user_embed_file)
-            torch.save(split_doc_cache, user_embed_file)
+            doc_embed_file = os.path.join(base_dir, 'fold_{}'.format(self.config['fold']), 'doc_embeds_graph_lr_poinc_{}_{}_{}.pt'.format(split, self.config['seed'], self.config['model_name']))
+            print("\nSaving doc embeddings in : ", doc_embed_file)
+            torch.save(split_doc_cache, doc_embed_file)
             # loaded_embeds = torch.load(doc_embed_file)
         
     
@@ -168,6 +175,10 @@ class Cache_GNN_Embeds():
                 for iters, batch_data in enumerate(self.config['loader']): 
                     if self.config['model_name'] in ['rgcn', 'rgat', 'rsage']:
                         _, _, node_embeds = self.model(batch_data.x.to(device), batch_data.edge_index.to(device), batch_data.edge_attr.to(device))
+                    elif self.config['model_name'] == 'HGCN':
+                        batch_data.edge_index = to_dense_adj(batch_data.edge_index).squeeze(0)
+                        preds = self.model.encode(batch_data.x.to(device), batch_data.edge_index.to(device))
+                        _, node_embeds = self.model.decode(preds.to(device), batch_data.edge_index.to(device))
                     else:
                         _, _, node_embeds = self.model(batch_data.x.to(device), batch_data.edge_index.to(device))
                         
@@ -224,9 +235,9 @@ class Cache_GNN_Embeds():
                     c+=1
             print("Zero entries = ", c)
     
-            user_embed_file = os.path.join(self.comp_dir, 'cached_emebds', 'doc_embeds_graph_lr_30_30_{}_{}_{}.pt'.format(split, self.config['seed'], self.config['model_name']))
-            print("\nSaving doc embeddings in : ", user_embed_file)
-            torch.save(split_doc_cache, user_embed_file)
+            doc_embed_file = os.path.join(self.comp_dir, 'cached_embeds', 'doc_embeds_graph_lr_30_30_poinc_{}_{}_{}.pt'.format(split, self.config['seed'], self.config['model_name']))
+            print("\nSaving doc embeddings in : ", doc_embed_file)
+            torch.save(split_doc_cache, doc_embed_file)
             # loaded_embeds = torch.load(doc_embed_file)
     
     
@@ -243,8 +254,7 @@ class Cache_GNN_Embeds():
         
         print("\n\nCaching FakeHealth dataset : ", self.config['data_name'])
         checkpoint = torch.load(self.model_file)
-        self.model.load_state_dict(checkpoint['model_state_dict']) 
-        self.optimizer.load_state_dict(checkpoint['optimizer_state_dict'])
+        self.model.load_state_dict(checkpoint['model_state_dict'])
         
         node2id_file = os.path.join(self.comp_dir, 'node2id_lr_top10.json')
         doc2id_file = os.path.join(self.comp_dir, 'doc2id_lr_top10_train.json')
@@ -272,15 +282,24 @@ class Cache_GNN_Embeds():
         with torch.no_grad(): 
             self.model.eval()
             if self.config['full_graph']:
-                _, _, node_embeds = self.model(self.config['data'].x.to(device), self.config['data'].edge_index.to(device))
+                if self.config['model_name'] not in ['HGCN', 'HNN']:
+                    _, _, node_embeds = self.model(self.config['data'].x.to(device), self.config['data'].edge_index.to(device))
+                else:
+                    preds = self.model.encode(self.config['data'].x.to(device), self.config['data'].edge_index.to(device))
+                    _, node_embeds = self.model.decode(preds, self.config['data'].edge_index.to(device))
                 for idx, ids in enumerate(node2id.values()):
                     node = id2node[int(ids)]
-                    if not str(node).startswith('news') and not str(node).startswith('story') and (str(node) in user_types['only_fake'] or str(node) in user_types['only_real']):
+                    if not str(node).startswith('news') and not str(node).startswith('story'): # and (str(node) in user_types['only_fake'] or str(node) in user_types['only_real']):
                         user_cache[ids, :] = node_embeds[ids, :]
             else:
                 for iters, batch_data in enumerate(self.config['loader']): 
                     if self.config['model_name'] in ['rgcn', 'rgat', 'rsage']:
                         _, _, node_embeds = self.model(batch_data.x.to(device), batch_data.edge_index.to(device), batch_data.edge_attr.to(device))
+                        
+                    elif self.config['model_name'] == 'HGCN':
+                        batch_data.edge_index = to_dense_adj(batch_data.edge_index).squeeze(0)
+                        preds = self.model.encode(batch_data.x.to(device), batch_data.edge_index.to(device))
+                        _, node_embeds = self.model.decode(preds.to(device), batch_data.edge_index.to(device))
                     else:
                         _, _, node_embeds = self.model(batch_data.x.to(device), batch_data.edge_index.to(device))
                         
@@ -338,9 +357,9 @@ class Cache_GNN_Embeds():
                     c+=1
             print("Zero entries = ", c)
     
-            user_embed_file = os.path.join(self.comp_dir, 'cached_embeds', 'doc_embeds_graph_top10mask_lr_{}_{}_{}.pt'.format(split, self.config['seed'], self.config['model_name']))
-            print("\nSaving doc embeddings in : ", user_embed_file)
-            torch.save(split_doc_cache, user_embed_file)
+            doc_embed_file = os.path.join(self.comp_dir, 'cached_embeds', 'doc_embeds_graph_poinc_wt3_lr_{}_{}_{}.pt'.format(split, self.config['seed'], self.config['model_name']))
+            print("\nSaving doc embeddings in : ", doc_embed_file)
+            torch.save(split_doc_cache, doc_embed_file)
             # loaded_embeds = torch.load(doc_embed_file)
 
 

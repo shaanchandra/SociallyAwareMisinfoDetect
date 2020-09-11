@@ -551,7 +551,7 @@ def collate_for_lr(batch):
 class LR_Dataset(data.Dataset):
     def __init__(self, config, split, seed):
 
-        self.base_dir = os.path.join('data', 'complete_data', config['data_name'])
+        self.base_dir = os.path.join(os.getcwd(), '..', 'data', 'complete_data', config['data_name'])
         
         if config['data_name'] in ['gossipcop', 'politifact']:
             self.node2id_file = os.path.join(self.base_dir, 'node2id_lr_30_30.json')
@@ -563,12 +563,13 @@ class LR_Dataset(data.Dataset):
             
         elif config['data_name'] in ['HealthRelease', 'HealthStory']:
             self.node2id_file = os.path.join(self.base_dir, 'node2id_lr_top10.json')
+            self.doc_embeds_file_gnn = os.path.join(self.base_dir, 'cached_embeds', 'doc_embeds_graph_top10_lr_test_21_hgt.pt')
             # self.doc_embeds_file_gnn = os.path.join(self.base_dir, 'cached_embeds', 'doc_embeds_graph_top10_lr_{}_{}_{}.pt'.format(split, seed, config['model_name']))
             # self.doc_embeds_file_text = os.path.join(self.base_dir, 'cached_embeds', 'doc_embeds_roberta_21_{}.pt'.format(split))
             self.doc_embeds_file_text = os.path.join(self.base_dir, 'cached_embeds', 'doc_embeds_roberta_{}_{}.pt'.format(seed, split))
-            doc2labels_file = os.path.join('FakeHealth', 'doc2labels_{}.json'.format(config['data_name']))
+            doc2labels_file = os.path.join(os.getcwd(), '..', 'FakeHealth', 'doc2labels_{}.json'.format(config['data_name']))
             doc2labels = json.load(open(doc2labels_file, 'r'))
-            self.split_docs_file = os.path.join('FakeHealth', 'doc_splits_{}.json'.format(config['data_name']))
+            self.split_docs_file = os.path.join(os.getcwd(), '..', 'FakeHealth', 'doc_splits_{}.json'.format(config['data_name']))
             self._split_docs = json.load(open(self.split_docs_file, 'r'))['{}_docs'.format(split)]
             
         self.test2id_file = os.path.join(self.base_dir, 'doc2id_encoder.json')

@@ -21,7 +21,7 @@ sys.path.append("..")
 from models.model import *
 from models.transformer_model import *
 from utils.utils import *
-from text_train.text_train_main import *
+from text_train_main import *
 
 
                 
@@ -32,13 +32,13 @@ from text_train.text_train_main import *
 if __name__ == '__main__':
     parser = argparse.ArgumentParser()
     # Required Paths
-    parser.add_argument('--data_path', type = str, default = './data',
+    parser.add_argument('--data_path', type = str, default = '../data',
                           help='path to dataset folder that contains the folders to gossipcop or politifact folders (raw data)')
-    parser.add_argument('--glove_path', type = str, default = './data/glove/glove.840B.300d.txt',
+    parser.add_argument('--glove_path', type = str, default = '../data/glove/glove.840B.300d.txt',
                           help='path for Glove embeddings (850B, 300D)')
-    parser.add_argument('--model_checkpoint_path', type = str, default = './model_checkpoints',
+    parser.add_argument('--model_checkpoint_path', type = str, default = '../model_checkpoints',
                           help='Directory for saving trained model checkpoints')
-    parser.add_argument('--vis_path', type = str, default = './vis_checkpoints',
+    parser.add_argument('--vis_path', type = str, default = '../vis_checkpoints',
                           help='Directory for saving tensorboard checkpoints')
     parser.add_argument("--model_save_name", type=str, default= 'best_model.pt',
                        help = 'saved model name')

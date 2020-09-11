@@ -21,8 +21,8 @@ nltk.download('punkt')
 from models.gnn_model import Graph_Net, Relational_GNN
 from models.transformer_model import *
 from utils.utils import *
-from gnn_train.gnn_train_main_mtl import Graph_Net_MTL_Main
-from gnn_train.gnn_train_main import Graph_Net_Main
+from gnn_train_main_mtl import Graph_Net_MTL_Main
+from gnn_train_main import Graph_Net_Main
 
 
 
@@ -33,11 +33,11 @@ from gnn_train.gnn_train_main import Graph_Net_Main
 if __name__ == '__main__':
     parser = argparse.ArgumentParser()
     # Required Paths
-    parser.add_argument('--data_path', type = str, default = './data/complete_data',
+    parser.add_argument('--data_path', type = str, default = '../data/complete_data',
                           help='path to dataset folder that contains the adj and feat matrices, etc')
-    parser.add_argument('--model_checkpoint_path', type = str, default = './model_checkpoints_gnn',
+    parser.add_argument('--model_checkpoint_path', type = str, default = '../model_checkpoints_gnn',
                           help='Directory for saving trained model checkpoints')
-    parser.add_argument('--vis_path', type = str, default = './vis_checkpoints_gnn',
+    parser.add_argument('--vis_path', type = str, default = '../vis_checkpoints_gnn',
                           help='Directory for saving tensorboard checkpoints')
     parser.add_argument("--model_save_name", type=str, default= 'best_model_gnn_lr.pt',
                        help = 'saved model name')

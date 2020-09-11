@@ -25,9 +25,10 @@ nltk.download('punkt')
 from torch.autograd import Variable
 import torch.nn as nn
 from statistics import stdev
+import sys
+sys.path.append("..")
 
 from models.model import *
-from models.transformer_model import *
 from utils.utils import *
 
 device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
@@ -40,12 +41,12 @@ class LR_model(torch.nn.Module):
     def __init__(self, config):
         super(LR_model, self).__init__()
         if config['mode'] == 'gnn':
-            self.in_dim = 256 if config['model_name'] != 'gat' else 256
+            self.in_dim = 256 if config['model_name'] != 'gat' else 300
             self.in_dim = self.in_dim*3 if config['model_name'] == 'gat' else self.in_dim
         elif config['mode'] == 'text':
-            self.in_dim = 1024
+            self.in_dim = 300
         else:
-            self.in_dim = 300 if config['model_name'] != 'gat' else 512
+            self.in_dim = 256 if config['model_name'] != 'gat' else 300
             self.in_dim = self.in_dim*3 if config['model_name'] == 'gat' else self.in_dim
             self.in_dim+=1024
         self.classifier = nn.Linear(self.in_dim, config['n_classes'])
@@ -119,8 +120,9 @@ class LR_Learner():
             eval_loss = sum(eval_loss)/len(eval_loss)
             
             if test:
-                target_names = ['False', 'True', 'Unverif']
+                # target_names = ['False', 'True', 'Unverif']
                 # print(classification_report(np.array(labels_list), np.array(preds_list), target_names=target_names))
+                print(classification_report(np.array(labels_list), np.array(preds_list)))
             
             if not test:
                 if config['data_name'] != 'pheme':
@@ -194,7 +196,6 @@ class LR_Learner():
         # this_f1 = self.eval_f1[1] if config['data_name']=='pheme' else self.eval_macro_f1
         this_f1 =  self.eval_f1
         current_best = self.best_val_f1 
-        print("this = {} , best = {}".format(this_f1, current_best))
         # this_f1 =  self.eval_macro_f1
         # current_best = self.best_val_f1[1] if (not isinstance(self.best_val_f1, int) and config['data_name']=='pheme') else self.best_val_f1
         if this_f1 > current_best:
@@ -233,8 +234,8 @@ class LR_Learner():
             
         
         # current_best = self.best_val_f1[1] if (not isinstance(self.best_val_f1, int) and config['data_name']=='pheme') else self.best_val_f1
-        current_best = self.best_val_f1
-        print("this = {} , best = {}".format(this_f1, current_best))
+        this_f1 =  self.eval_f1
+        current_best = self.best_val_f1 
         
         if this_f1 - current_best!=0 and this_f1 - current_best < 1e-3:
             self.not_improved+=1
@@ -371,19 +372,19 @@ if __name__ == '__main__':
     # Named params    
     parser.add_argument('--data_name', type = str, default = 'gossipcop',
                           help='dataset name: politifact / gossipcop / pheme / HealthRelease / HealthStory')
-    parser.add_argument('--model_name', type = str, default = 'graph_sage',
-                          help='model name: gcn / graph_sage / graph_conv / gat')
+    parser.add_argument('--model_name', type = str, default = 'HGCN',
+                          help='model name: gcn / graph_sage / graph_conv / gat / rgcn / HGCN')
     parser.add_argument('--mode', type=str, default='gnn+text',
                         help='what features to use for classification: gnn / text / gnn+text')
     parser.add_argument('--loss_func', type = str, default = 'bce',
                         help = 'Loss function to use for optimization: bce / bce_logits / ce')
     parser.add_argument('--scheduler', type = str, default = 'step',
                         help = 'The type of lr scheduler to use anneal learning rate: step/multi_step')
-    parser.add_argument('--optimizer', type = str, default = 'Adam',
+    parser.add_argument('--optimizer', type = str, default = 'SGD',
                         help = 'Optimizer to use for training')
     
     # Dimensions/sizes params   
-    parser.add_argument('--batch_size', type = int, default = 3,
+    parser.add_argument('--batch_size', type = int, default = 16,
                           help='batch size for training"')
         
     # Numerical params
