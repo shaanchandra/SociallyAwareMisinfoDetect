@@ -43,11 +43,11 @@ class LR_model(torch.nn.Module):
             self.in_dim = 256 if config['model_name'] != 'gat' else 256
             self.in_dim = self.in_dim*3 if config['model_name'] == 'gat' else self.in_dim
         elif config['mode'] == 'text':
-            self.in_dim = 300
+            self.in_dim = 1024
         else:
             self.in_dim = 300 if config['model_name'] != 'gat' else 512
             self.in_dim = self.in_dim*3 if config['model_name'] == 'gat' else self.in_dim
-            self.in_dim+=300
+            self.in_dim+=1024
         self.classifier = nn.Linear(self.in_dim, config['n_classes'])
             
 

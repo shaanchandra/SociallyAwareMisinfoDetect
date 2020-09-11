@@ -21,7 +21,7 @@ sys.path.append("..")
 from models.model import *
 from models.transformer_model import *
 from utils.utils import *
-from text_train_main import *
+from text_train.text_train_main import *
 
 
                 
@@ -32,13 +32,13 @@ from text_train_main import *
 if __name__ == '__main__':
     parser = argparse.ArgumentParser()
     # Required Paths
-    parser.add_argument('--data_path', type = str, default = '../data',
+    parser.add_argument('--data_path', type = str, default = './data',
                           help='path to dataset folder that contains the folders to gossipcop or politifact folders (raw data)')
-    parser.add_argument('--glove_path', type = str, default = '../data/glove/glove.840B.300d.txt',
+    parser.add_argument('--glove_path', type = str, default = './data/glove/glove.840B.300d.txt',
                           help='path for Glove embeddings (850B, 300D)')
-    parser.add_argument('--model_checkpoint_path', type = str, default = '../model_checkpoints',
+    parser.add_argument('--model_checkpoint_path', type = str, default = './model_checkpoints',
                           help='Directory for saving trained model checkpoints')
-    parser.add_argument('--vis_path', type = str, default = '../vis_checkpoints',
+    parser.add_argument('--vis_path', type = str, default = './vis_checkpoints',
                           help='Directory for saving tensorboard checkpoints')
     parser.add_argument("--model_save_name", type=str, default= 'best_model.pt',
                        help = 'saved model name')
@@ -46,12 +46,12 @@ if __name__ == '__main__':
     #### Training Params ####
     
     # Named params    
-    parser.add_argument('--data_name', type = str, default = 'HealthStory',
-                          help='dataset name:  HealthStory / HealthRelease')
-    parser.add_argument('--model_name', type = str, default = 'cnn',
+    parser.add_argument('--data_name', type = str, default = 'pheme',
+                          help='dataset name: politifact / gossipcop / pheme / HealthStory / HealthRelease')
+    parser.add_argument('--model_name', type = str, default = 'roberta-large',
                           help='model name: bilstm / bilstm_pool / bilstm_reg / han / cnn / \
                               bert-base-cased / bert-large-cased / xlnet-base-cased / xlnet-large-cased / roberta-base / roberta-large')
-    parser.add_argument('--embed_name', type = str, default = 'glove',
+    parser.add_argument('--embed_name', type = str, default = 'roberta',
                           help='type of word embeddings used: glove/ elmo/ bert/ xlnet / roberta"')
     parser.add_argument('--optimizer', type = str, default = 'Adam',
                         help = 'Optimizer to use for training')
@@ -61,7 +61,7 @@ if __name__ == '__main__':
                         help = 'The type of lr scheduler to use anneal learning rate: step/multi_step')
     
     # Dimensions/sizes params   
-    parser.add_argument('--batch_size', type = int, default = 32,
+    parser.add_argument('--batch_size', type = int, default = 4,
                           help='batch size for training"')
     parser.add_argument('--embed_dim', type = int, default = 300,
                           help='dimension of word embeddings used(GLove) =300, for Elmo = 512/256/128"')
@@ -87,13 +87,13 @@ if __name__ == '__main__':
                         help = 'weight decay for optimizer')
     parser.add_argument('--momentum', type = float, default = 0.8,
                         help = 'Momentum for optimizer')
-    parser.add_argument('--max_epoch', type = int, default = 50,
+    parser.add_argument('--max_epoch', type = int, default = 1,
                         help = 'Max epochs to train for')
     parser.add_argument('--lr_decay_step', type = float, default = 3,
                         help = 'No. of epochs after which learning rate should be decreased')
-    parser.add_argument('--lr_decay_factor', type = float, default = 0.8,
+    parser.add_argument('--lr_decay_factor', type = float, default = 0.99,
                         help = 'Decay the learning rate of the optimizer by this multiplicative amount')
-    parser.add_argument('--patience', type = float, default = 6,
+    parser.add_argument('--patience', type = float, default = 1,
                         help = 'Patience no. of epochs for early stopping')
     parser.add_argument('--beta_ema', type = float, default = 0.99,
                         help = 'Temporal Averaging smoothing co-efficient')
@@ -109,15 +109,15 @@ if __name__ == '__main__':
                         help='set seed for reproducability')
     parser.add_argument('--han_max_batch_size', type=int, default=8000,
                         help='max empiracally calculated no. of tokens in a batch that fit for HAN dynamic batching')
-    parser.add_argument('--log_every', type=int, default=200,
+    parser.add_argument('--log_every', type=int, default=20,
                         help='Log stats in Tensorboard every x iterations (not epochs) of training')
     
     # Options params
-    parser.add_argument('--parallel_computing', type=bool, default=True,
+    parser.add_argument('--parallel_computing', type=bool, default=False,
                         help='To run the model on multiple nodes') 
-    parser.add_argument('--lowercase', type=bool, default=False,
+    parser.add_argument('--lowercase', type=bool, default=True,
                         help='whether to lowercase the tokens or not')
-    parser.add_argument('--freeze', type = bool, default = True,
+    parser.add_argument('--freeze', type = bool, default = False,
                       help='Whether to fine-tune BERT or not (freeze = True will not fine-tune)"')
     
     # Transformer Model params
@@ -127,13 +127,13 @@ if __name__ == '__main__':
                         help='directory to store all cache (pre-trained wts, features, etc')
     parser.add_argument('--classifier', type=str, default="mlp",
                         help='Option of cnn / mlp. If CNN then Roberta is used as word embeddings generator for CNN')
-    parser.add_argument('--max_seq_length_transf', type=int, default=512,
+    parser.add_argument('--max_seq_length_transf', type=int, default=200,
                         help='max no. of tokens to process with Transformer models')
-    parser.add_argument('--train_batch_size_transf', type=int, default=8,
+    parser.add_argument('--train_batch_size_transf', type=int, default=16,
                         help='batch size to use while training')
-    parser.add_argument('--eval_batch_size_transf', type=int, default=8,
+    parser.add_argument('--eval_batch_size_transf', type=int, default=4,
                         help='batch size to use while evaluating')
-    parser.add_argument('--gradient_accumulation_steps_transf', type=int, default=1,
+    parser.add_argument('--gradient_accumulation_steps_transf', type=int, default=2,
                         help='The number of training steps to execute before performing a optimizer.step(). Effectively increases \
                             the training batch size while sacrificing training time to lower memory consumption.')
     parser.add_argument('--num_train_epochs_transf', type=int, default=1,
@@ -197,7 +197,7 @@ if __name__ == '__main__':
                         help = 'The improvement over best_eval_loss necessary to count as a better checkpoint')
     parser.add_argument('--manual_seed_transf', type=int, default=21,
                         help = 'Seed for training for reproduction')
-    parser.add_argument('--use_cuda', type=bool, default=True,
+    parser.add_argument('--use_cuda', type=bool, default=False,
                         help = 'Whethere to use GPU or not')
     parser.add_argument('--extract_embeddings', type=bool, default=False,
                         help = "To extract seq embedding [CLS] and apply attention on parts of the doc before classification")
@@ -243,10 +243,6 @@ if __name__ == '__main__':
         os.makedirs(config['model_path'])
     else:
         print("\nModel save path checked..")
-    if config['data_name'] not in ['HealthStory', 'HealthRelease']:
-        raise ValueError("[!] ERROR:  data_name is incorrect. This file is for trianin of: HealthStory / HealthRelease  only !")
-    else:
-        print("\nData name checked...")
     if config['model_name'] not in ['bilstm', 'bilstm_pool', 'bilstm_reg', 'han', 'cnn', 'bert-base-cased' , 'bert-large-cased' , 'xlnet-base-cased' , 'xlnet-large-cased', 'roberta-base', 'roberta-large']:
         raise ValueError("[!] ERROR:  model_name is incorrect. Choose one of - bilstm / bilstm_pool / bilstm_reg / han / cnn\
                          bert-base-cased / bert-large-cased / xlnet-base-cased / xlnet-large-cased / roberta-base / roberta-large")
@@ -263,7 +259,7 @@ if __name__ == '__main__':
     
     
     if config['embed_name'] not in ['bert', 'xlnet', 'roberta']:
-        train_args = None
+        train_args = {}
         # Print args
         print("\n" + "x"*50 + "\n\nRunning training with the following parameters: \n")
         for key, value in config.items():
@@ -294,26 +290,50 @@ if __name__ == '__main__':
             config['extract_embeddings'] = False
         
     config['writer'] = SummaryWriter(config['vis_path'])
-        
+    
+    # Seeds for reproduceable runs
+    torch.manual_seed(config['seed'])
+    torch.cuda.manual_seed(config['seed'])
+    np.random.seed(config['seed'])
+    random.seed(config['seed'])
+    torch.backends.cudnn.deterministic = True
+    torch.backends.cudnn.benchmark = False
+    
     
     # Prepare the datasets and iterator for training and evaluation based on Glove or Elmo embeddings
     if config['embed_name'] == 'glove':
-        config['train_loader'], config['dev_loader'], config['test_loader'], config['TEXT'], config['LABEL'], config['train_split'], config['val_split'], config['test_split'] = prepare_glove_training(config)
+        config['train_loader'], config['dev_loader'], config['test_loader'], config['TEXT'], config['LABEL'], config['train_split'], config['val_split'], config['test_split'] = prepare_glove_training(config, fold=0)
         config['vocab'] = config['TEXT'].vocab
     elif config['embed_name'] in ['bert', 'xlnet', 'roberta']:
-        config['train_df'], config['val_df'], config['test_df'] = prepare_transformer_training(config)
+        config['train_df'], config['val_df'], config['test_df'] = prepare_transformer_training(config, fold=0)
     elif config['embed_name']=='elmo' and config['model_name']!='han':
-        config['train_data'], config['train_label'], config['val_data'], config['val_labels'], config['test_data'], config['test_label'] = prepare_elmo_training(config)
+        config['train_data'], config['train_label'], config['val_data'], config['val_labels'], config['test_data'], config['test_label'] = prepare_elmo_training(config, fold=0)
         # print(len(train_labels))
     elif config['embed_name']=='elmo' and config['model_name']=='han':
-        config['train_loader'], config['val_loader'], config['test_loader'] = prepare_HAN_elmo_training(config)
+        config['train_loader'], config['val_loader'], config['test_loader'] = prepare_HAN_elmo_training(config, fold=0)  
+    
+    
         
-           
+     
+    for fold in [1,3,4,6,8]: # range(1,10):
+        
+        # Prepare the datasets and iterator for training and evaluation based on Glove or Elmo embeddings
+        if config['embed_name'] == 'glove':
+            train_loader, dev_loader, test_loader, TEXT, LABEL, train_split, val_split, test_split = prepare_glove_training(config, fold=fold)
+            vocab = TEXT.vocab
+        elif config['embed_name'] in ['bert', 'xlnet', 'roberta']:
+            config['train_df'], config['val_df'], config['test_df'] = prepare_transformer_training(config, fold=fold)
+        elif config['embed_name']=='elmo' and config['model_name']!='han':
+            train_data, train_labels, val_data, val_labels, test_data, test_labels = prepare_elmo_training(config, fold=fold)
+        elif config['embed_name']=='elmo' and config['model_name']=='han':
+            train_loader, val_loader, test_loader = prepare_HAN_elmo_training(config, fold=fold)
+
+        config['fold'] = fold
         
     
-    try:
-        doc_encoder = Doc_Encoder_Main(config, train_args)
-        doc_encoder.train_main()
-    except KeyboardInterrupt:
-        print("Keyboard interrupt by user detected...\nClosing the tensorboard writer!")
-        config['writer'].close()
+        try:
+            doc_encoder = Doc_Encoder_Main(config, train_args)
+            doc_encoder.train_main()
+        except KeyboardInterrupt:
+            print("Keyboard interrupt by user detected...\nClosing the tensorboard writer!")
+            config['writer'].close()
